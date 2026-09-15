@@ -3,8 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Wiki Interlanguage Article Gap Finder</title>
-  <style>
+  <title>FindInYourLanguage — Wiki Article Gap Finder</title>  <style>
     :root {
       --bg: #f8fafc;
       --card-bg: #ffffff;
@@ -189,8 +188,8 @@
 
 <div class="container">
   <header>
-    <h1>Wikipedia Language Gap Finder</h1>
-    <p class="subtitle">Check which articles from a source language exist or are missing in another language</p>
+    <h1>FindInYourLanguage</h1>
+    <p class="subtitle">Discover missing Wikipedia articles in your native tongue and start translating</p>
   </header>
 
   <div class="card">
@@ -438,7 +437,7 @@
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
     const link = document.createElement("a");
     link.href = URL.createObjectURL(blob);
-    link.download = `wiki-gap-${new Date().toISOString().slice(0, 10)}.csv`;
+    link.download = `FindInYourLanguage-${srcLang}-to-${targetLang}-${new Date().toISOString().slice(0, 10)}.csv`;
     link.click();
   }
 </script>
