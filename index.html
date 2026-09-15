@@ -1,0 +1,446 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Wiki Interlanguage Article Gap Finder</title>
+  <style>
+    :root {
+      --bg: #f8fafc;
+      --card-bg: #ffffff;
+      --text: #1e293b;
+      --primary: #2563eb;
+      --primary-hover: #1d4ed8;
+      --border: #e2e8f0;
+      --missing: #dc2626;
+      --existing: #16a34a;
+    }
+
+    * { box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+      background-color: var(--bg);
+      color: var(--text);
+      line-height: 1.5;
+      padding: 24px;
+      margin: 0;
+    }
+
+    .container {
+      max-width: 960px;
+      margin: 0 auto;
+    }
+
+    header {
+      margin-bottom: 24px;
+      text-align: center;
+    }
+
+    h1 { margin-bottom: 8px; font-size: 1.8rem; }
+    p.subtitle { color: #64748b; margin-top: 0; }
+
+    .card {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 20px;
+      margin-bottom: 20px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+    }
+
+    .grid-2 {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+    }
+
+    @media (max-width: 600px) {
+      .grid-2 { grid-template-columns: 1fr; }
+    }
+
+    label {
+      font-weight: 600;
+      font-size: 0.875rem;
+      display: block;
+      margin-bottom: 6px;
+    }
+
+    input, select, textarea {
+      width: 100%;
+      padding: 10px;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      font-size: 0.95rem;
+    }
+
+    input:focus, textarea:focus, select:focus {
+      outline: 2px solid var(--primary);
+      border-color: transparent;
+    }
+
+    .tab-nav {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 12px;
+    }
+
+    .tab-btn {
+      padding: 8px 16px;
+      border: 1px solid var(--border);
+      background: #f1f5f9;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 0.9rem;
+    }
+
+    .tab-btn.active {
+      background: var(--primary);
+      color: white;
+      border-color: var(--primary);
+    }
+
+    .hidden { display: none; }
+
+    button.submit-btn {
+      background: var(--primary);
+      color: white;
+      padding: 12px 24px;
+      border: none;
+      border-radius: 6px;
+      font-size: 1rem;
+      font-weight: 600;
+      cursor: pointer;
+      width: 100%;
+      margin-top: 10px;
+      transition: background 0.2s ease;
+    }
+
+    button.submit-btn:hover { background: var(--primary-hover); }
+    button:disabled { opacity: 0.6; cursor: not-allowed; }
+
+    #status {
+      margin-top: 15px;
+      font-size: 0.9rem;
+      font-weight: 500;
+      color: #0284c7;
+      text-align: center;
+    }
+
+    .stats {
+      display: flex;
+      gap: 16px;
+      margin-bottom: 16px;
+    }
+
+    .stat-badge {
+      flex: 1;
+      padding: 12px;
+      border-radius: 6px;
+      font-weight: bold;
+      text-align: center;
+    }
+
+    .stat-missing { background: #fee2e2; color: var(--missing); }
+    .stat-existing { background: #dcfce7; color: var(--existing); }
+
+    .result-section { margin-top: 24px; }
+    
+    .table-container {
+      max-height: 400px;
+      overflow-y: auto;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.9rem;
+    }
+
+    th, td {
+      text-align: left;
+      padding: 10px 14px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    th {
+      background: #f8fafc;
+      position: sticky;
+      top: 0;
+      z-index: 1;
+    }
+
+    a { color: var(--primary); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+
+    .export-btn {
+      float: right;
+      padding: 6px 12px;
+      font-size: 0.85rem;
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      background: white;
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+
+<div class="container">
+  <header>
+    <h1>Wikipedia Language Gap Finder</h1>
+    <p class="subtitle">Check which articles from a source language exist or are missing in another language</p>
+  </header>
+
+  <div class="card">
+    <div class="grid-2" style="margin-bottom: 16px;">
+      <div>
+        <label for="srcLang">Source Wiki Language Code (e.g. <code>en</code>, <code>es</code>, <code>fr</code>):</label>
+        <input type="text" id="srcLang" value="en" placeholder="en" />
+      </div>
+      <div>
+        <label for="targetLang">Target Wiki Language Code (e.g. <code>hi</code>, <code>de</code>, <code>ta</code>):</label>
+        <input type="text" id="targetLang" value="es" placeholder="es" />
+      </div>
+    </div>
+
+    <label>Input Method:</label>
+    <div class="tab-nav">
+      <button class="tab-btn active" id="tabCategoryBtn" onclick="switchTab('category')">Category</button>
+      <button class="tab-btn" id="tabListBtn" onclick="switchTab('list')">Direct Article List</button>
+    </div>
+
+    <div id="categoryInputGroup">
+      <label for="categoryTitle">Category Title (without "Category:"):</label>
+      <input type="text" id="categoryTitle" placeholder="e.g. Artificial intelligence" value="Machine learning" />
+    </div>
+
+    <div id="listInputGroup" class="hidden">
+      <label for="articleList">Article Titles (one per line):</label>
+      <textarea id="articleList" rows="6" placeholder="Artificial intelligence&#10;Deep learning&#10;Natural language processing"></textarea>
+    </div>
+
+    <button id="runBtn" class="submit-btn" onclick="startScan()">Compare Articles</button>
+    <div id="status"></div>
+  </div>
+
+  <div id="resultsCard" class="card hidden">
+    <button class="export-btn" onclick="exportToCSV()">Export to CSV</button>
+    <h2>Results</h2>
+
+    <div class="stats">
+      <div class="stat-badge stat-missing" id="missingBadge">Missing: 0</div>
+      <div class="stat-badge stat-existing" id="existingBadge">Existing: 0</div>
+    </div>
+
+    <div class="result-section">
+      <h3 style="color: var(--missing)">Missing Articles (Need Translation)</h3>
+      <div class="table-container">
+        <table>
+          <thead>
+            <tr>
+              <th>Source Article</th>
+              <th>Action</th>
+            </tr>
+          </thead>
+          <tbody id="missingTableBody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="result-section">
+      <h3 style="color: var(--existing)">Existing Articles</h3>
+      <div class="table-container">
+        <table>
+          <thead>
+            <tr>
+              <th>Source Title</th>
+              <th>Target Title</th>
+            </tr>
+          </thead>
+          <tbody id="existingTableBody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  let activeTab = 'category';
+  let missingArticles = [];
+  let existingArticles = [];
+
+  function switchTab(tab) {
+    activeTab = tab;
+    document.getElementById('tabCategoryBtn').classList.toggle('active', tab === 'category');
+    document.getElementById('tabListBtn').classList.toggle('active', tab === 'list');
+    document.getElementById('categoryInputGroup').classList.toggle('hidden', tab !== 'category');
+    document.getElementById('listInputGroup').classList.toggle('hidden', tab !== 'list');
+  }
+
+  function setStatus(text) {
+    document.getElementById('status').innerText = text;
+  }
+
+  // Fetch all articles from a category using the MediaWiki action API
+  async function fetchCategoryMembers(srcLang, categoryTitle) {
+    const members = [];
+    let cmcontinue = '';
+    const cleanCat = categoryTitle.replace(/^Category:/i, '').trim();
+
+    do {
+      const url = `https://${srcLang}.wikipedia.org/w/api.php?action=query&list=categorymembers&cmtitle=Category:${encodeURIComponent(cleanCat)}&cmnamespace=0&cmlimit=500&format=json&origin=*` + (cmcontinue ? `&cmcontinue=${cmcontinue}` : '');
+      
+      const res = await fetch(url);
+      const data = await res.json();
+
+      if (data.error) throw new Error(data.error.info);
+      if (data.query && data.query.categorymembers) {
+        members.push(...data.query.categorymembers.map(m => m.title));
+      }
+      cmcontinue = data.continue ? data.continue.cmcontinue : '';
+      setStatus(`Fetched ${members.length} articles from category...`);
+    } while (cmcontinue);
+
+    return members;
+  }
+
+  // Check language links in batches of 50
+  async function checkLangLinks(srcLang, targetLang, titles) {
+    const results = [];
+    const batchSize = 50;
+
+    for (let i = 0; i < titles.length; i += batchSize) {
+      const batch = titles.slice(i, i + batchSize);
+      setStatus(`Checking interlanguage links: ${i + 1} to ${Math.min(i + batchSize, titles.length)} of ${titles.length}...`);
+
+      const url = `https://${srcLang}.wikipedia.org/w/api.php?action=query&prop=langlinks&lllang=${targetLang}&titles=${encodeURIComponent(batch.join('|'))}&format=json&origin=*`;
+      const res = await fetch(url);
+      const data = await res.json();
+
+      if (data.query && data.query.pages) {
+        for (const pageId in data.query.pages) {
+          const page = data.query.pages[pageId];
+          const hasLink = page.langlinks && page.langlinks.length > 0;
+          results.push({
+            srcTitle: page.title,
+            targetTitle: hasLink ? page.langlinks[0]['*'] : null,
+            exists: Boolean(hasLink)
+          });
+        }
+      }
+    }
+    return results;
+  }
+
+  async function startScan() {
+    const srcLang = document.getElementById('srcLang').value.trim().toLowerCase();
+    const targetLang = document.getElementById('targetLang').value.trim().toLowerCase();
+    const runBtn = document.getElementById('runBtn');
+
+    if (!srcLang || !targetLang) {
+      alert("Please provide valid language codes.");
+      return;
+    }
+
+    runBtn.disabled = true;
+    missingArticles = [];
+    existingArticles = [];
+    document.getElementById('resultsCard').classList.add('hidden');
+
+    try {
+      let titles = [];
+
+      if (activeTab === 'category') {
+        const cat = document.getElementById('categoryTitle').value.trim();
+        if (!cat) throw new Error("Please specify a category name.");
+        setStatus("Fetching category members...");
+        titles = await fetchCategoryMembers(srcLang, cat);
+      } else {
+        titles = document.getElementById('articleList').value
+          .split('\n')
+          .map(t => t.trim())
+          .filter(t => t.length > 0);
+        if (titles.length === 0) throw new Error("Please enter at least one article title.");
+      }
+
+      if (titles.length === 0) {
+        setStatus("No articles found in this category/list.");
+        runBtn.disabled = false;
+        return;
+      }
+
+      const results = await checkLangLinks(srcLang, targetLang, titles);
+
+      missingArticles = results.filter(r => !r.exists);
+      existingArticles = results.filter(r => r.exists);
+
+      renderResults(srcLang, targetLang);
+      setStatus(`Completed! Scanned ${results.length} articles.`);
+    } catch (err) {
+      console.error(err);
+      setStatus(`Error: ${err.message}`);
+    } finally {
+      runBtn.disabled = false;
+    }
+  }
+
+  function renderResults(srcLang, targetLang) {
+    document.getElementById('missingBadge').innerText = `Missing: ${missingArticles.length}`;
+    document.getElementById('existingBadge').innerText = `Existing: ${existingArticles.length}`;
+
+    const missingTbody = document.getElementById('missingTableBody');
+    const existingTbody = document.getElementById('existingTableBody');
+
+    missingTbody.innerHTML = missingArticles.map(item => `
+      <tr>
+        <td>
+          <a href="https://${srcLang}.wikipedia.org/wiki/${encodeURIComponent(item.srcTitle)}" target="_blank" rel="noopener">
+            ${item.srcTitle}
+          </a>
+        </td>
+        <td>
+          <a href="https://${targetLang}.wikipedia.org/wiki/Special:ContentTranslation?from=${srcLang}&to=${targetLang}&page=${encodeURIComponent(item.srcTitle)}" target="_blank" rel="noopener">
+            Translate / Create
+          </a>
+        </td>
+      </tr>
+    `).join('') || '<tr><td colspan="2">None found! All articles exist.</td></tr>';
+
+    existingTbody.innerHTML = existingArticles.map(item => `
+      <tr>
+        <td>
+          <a href="https://${srcLang}.wikipedia.org/wiki/${encodeURIComponent(item.srcTitle)}" target="_blank" rel="noopener">
+            ${item.srcTitle}
+          </a>
+        </td>
+        <td>
+          <a href="https://${targetLang}.wikipedia.org/wiki/${encodeURIComponent(item.targetTitle)}" target="_blank" rel="noopener">
+            ${item.targetTitle}
+          </a>
+        </td>
+      </tr>
+    `).join('') || '<tr><td colspan="2">None found! No articles exist yet.</td></tr>';
+
+    document.getElementById('resultsCard').classList.remove('hidden');
+  }
+
+  function exportToCSV() {
+    let csv = "Status,Source Title,Target Title\n";
+    missingArticles.forEach(item => {
+      csv += `"Missing","${item.srcTitle.replace(/"/g, '""')}",""\n`;
+    });
+    existingArticles.forEach(item => {
+      csv += `"Existing","${item.srcTitle.replace(/"/g, '""')}","${item.targetTitle.replace(/"/g, '""')}"\n`;
+    });
+
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement("a");
+    link.href = URL.createObjectURL(blob);
+    link.download = `wiki-gap-${new Date().toISOString().slice(0, 10)}.csv`;
+    link.click();
+  }
+</script>
+</body>
+</html>
